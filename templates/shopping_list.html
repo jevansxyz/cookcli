@@ -16,17 +16,6 @@
                 </button>
             </div>
 
-            <div class="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-4 border border-blue-200 mb-6">
-                <h3 class="font-bold text-md mb-3 text-blue-700">{{ tr.t("shopping-add-custom-item") }}</h3>
-                <div class="space-y-3">
-                    <input id="custom-item-name" type="text" placeholder='{{ tr.t("shopping-custom-name-placeholder") }}' class="w-full px-3 py-2 border border-blue-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300">
-                    <input id="custom-item-quantity" type="text" placeholder='{{ tr.t("shopping-custom-quantity-placeholder") }}' class="w-full px-3 py-2 border border-blue-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300">
-                    <button onclick="addCustomItem()" class="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all">
-                        {{ tr.t("shopping-add-custom-item-button") }}
-                    </button>
-                </div>
-            </div>
-
             <!-- Pantry items section -->
             <div id="pantry-section" class="hidden">
                 <h3 class="font-bold text-lg mb-3 text-green-600">{{ tr.t("shopping-in-pantry") }}</h3>
@@ -46,9 +35,6 @@
 
 <script>
 let shoppingList = [];
-const customCategoryTitle = '{{ tr.t("shopping-custom-items") }}';
-const customBadgeText = '{{ tr.t("shopping-custom-label") }}';
-const customNameRequired = '{{ tr.t("shopping-custom-name-required") }}';
 
 async function loadShoppingList() {
     try {
@@ -74,28 +60,20 @@ function renderSelectedRecipes() {
         return;
     }
 
-    container.innerHTML = shoppingList.map((item, index) => {
-        const isCustom = (item.kind || 'recipe') === 'custom';
-        const quantity = item.quantity ? `<span class="text-sm text-gray-600 ml-2">${item.quantity}</span>` : '';
-        const scaleDisplay = isCustom ? '' : `<span class="text-purple-600 ml-2 text-sm">(×${item.scale})</span>`;
-        const badge = isCustom ? `<span class="inline-flex items-center px-2 py-0.5 text-xs font-semibold rounded-full bg-blue-100 text-blue-700">${customBadgeText}</span>` : '';
-        return `
+    container.innerHTML = shoppingList.map((item, index) => `
         <div class="flex items-center justify-between bg-gradient-to-r from-purple-50 to-pink-50 p-3 rounded-lg border border-purple-200">
-            <div class="flex items-center space-x-2">
-                ${badge}
+            <div>
                 <span class="font-medium text-gray-800">${item.name}</span>
-                ${scaleDisplay}
-                ${quantity}
+                <span class="text-purple-600 ml-2 text-sm">(×${item.scale})</span>
             </div>
-            <button onclick="removeItem('${item.path}')" class="text-red-500 hover:text-red-700 font-medium text-sm">
+            <button onclick="removeRecipe('${item.path}')" class="text-red-500 hover:text-red-700 font-medium text-sm">
                 {{ tr.t("shopping-remove") }}
             </button>
         </div>
-    `;
-    }).join('');
+    `).join('');
 }
 
-async function removeItem(path) {
+async function removeRecipe(path) {
     try {
         const response = await fetch('/api/shopping_list/remove', {
             method: 'POST',
@@ -129,44 +107,6 @@ async function clearList() {
     }
 }
 
-async function addCustomItem() {
-    const nameInput = document.getElementById('custom-item-name');
-    const quantityInput = document.getElementById('custom-item-quantity');
-    const name = nameInput.value.trim();
-    const quantity = quantityInput.value.trim();
-
-    if (!name) {
-        alert(customNameRequired);
-        return;
-    }
-
-    const payload = {
-        path: `custom:${Date.now()}`,
-        name,
-        quantity: quantity || null,
-        scale: 1,
-        kind: 'custom'
-    };
-
-    try {
-        const response = await fetch('/api/shopping_list/add', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(payload)
-        });
-
-        if (response.ok) {
-            nameInput.value = '';
-            quantityInput.value = '';
-            await loadShoppingList();
-        }
-    } catch (error) {
-        console.error('Failed to add custom item:', error);
-    }
-}
-
 async function generateList() {
     if (shoppingList.length === 0) {
         alert('{{ tr.t("shopping-add-recipes-first") }}');
@@ -181,10 +121,7 @@ async function generateList() {
             },
             body: JSON.stringify(shoppingList.map(item => ({
                 recipe: item.path,
-                scale: item.scale,
-                kind: item.kind || 'recipe',
-                name: item.name,
-                quantity: item.quantity
+                scale: item.scale
             })))
         });
 
@@ -279,7 +216,7 @@ function displayShoppingList(data) {
         html += '<h2 class="text-2xl font-bold mb-4 text-orange-600">{{ tr.t("shopping-title") }}</h2>';
         html += data.categories.map(category => `
             <div class="mb-6 bg-white rounded-lg p-4 shadow-sm">
-                <h3 class="font-semibold text-lg mb-3 text-orange-600">${category.category === 'Custom Items' ? customCategoryTitle : category.category}</h3>
+                <h3 class="font-semibold text-lg mb-3 text-orange-600">${category.category}</h3>
                 <ul class="space-y-2">
                     ${category.items.map((item, idx) => {
                         // Use ingredient name as the unique ID for localStorage

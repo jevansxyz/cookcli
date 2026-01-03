@@ -2,50 +2,12 @@ use anyhow::Result;
 use camino::Utf8PathBuf;
 use serde::{Deserialize, Serialize};
 use std::fs;
-use std::str::FromStr;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ShoppingListItem {
     pub path: String,
     pub name: String,
     pub scale: f64,
-    #[serde(default)]
-    pub kind: ShoppingListItemKind,
-    pub quantity: Option<String>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(rename_all = "lowercase")]
-pub enum ShoppingListItemKind {
-    Recipe,
-    Custom,
-}
-
-impl ShoppingListItemKind {
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            ShoppingListItemKind::Recipe => "recipe",
-            ShoppingListItemKind::Custom => "custom",
-        }
-    }
-}
-
-impl Default for ShoppingListItemKind {
-    fn default() -> Self {
-        ShoppingListItemKind::Recipe
-    }
-}
-
-impl FromStr for ShoppingListItemKind {
-    type Err = ();
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s.to_lowercase().as_str() {
-            "recipe" => Ok(ShoppingListItemKind::Recipe),
-            "custom" => Ok(ShoppingListItemKind::Custom),
-            _ => Ok(ShoppingListItemKind::Recipe),
-        }
-    }
 }
 
 pub struct ShoppingListStore {
@@ -74,22 +36,10 @@ impl ShoppingListStore {
 
             let parts: Vec<&str> = line.split('\t').collect();
             if parts.len() >= 3 {
-                let kind = parts
-                    .get(3)
-                    .and_then(|p| ShoppingListItemKind::from_str(p).ok())
-                    .unwrap_or_default();
-
-                let quantity = parts
-                    .get(4)
-                    .map(|s| s.to_string())
-                    .filter(|s| !s.trim().is_empty());
-
                 items.push(ShoppingListItem {
                     path: parts[0].to_string(),
                     name: parts[1].to_string(),
                     scale: parts[2].parse().unwrap_or(1.0),
-                    kind,
-                    quantity,
                 });
             }
         }
@@ -99,17 +49,10 @@ impl ShoppingListStore {
 
     pub fn save(&self, items: &[ShoppingListItem]) -> Result<()> {
         let mut content = String::from("# Shopping List\n");
-        content.push_str("# Format: path<TAB>name<TAB>scale<TAB>kind<TAB>quantity\n\n");
+        content.push_str("# Format: path<TAB>name<TAB>scale\n\n");
 
         for item in items {
-            content.push_str(&format!(
-                "{}\t{}\t{}\t{}\t{}\n",
-                item.path,
-                item.name,
-                item.scale,
-                item.kind.as_str(),
-                item.quantity.clone().unwrap_or_default()
-            ));
+            content.push_str(&format!("{}\t{}\t{}\n", item.path, item.name, item.scale));
         }
 
         fs::write(&self.file_path, content)?;
