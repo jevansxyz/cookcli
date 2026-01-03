@@ -1,5 +1,5 @@
 use crate::server::{
-    shopping_list_store::{ShoppingListItem, ShoppingListStore},
+    shopping_list_store::{ShoppingListItem, ShoppingListItemKind, ShoppingListStore},
     AppState,
 };
 use crate::util::{extract_ingredients, PARSER};
@@ -14,20 +14,29 @@ use std::sync::Arc;
 pub struct RecipeRequest {
     recipe: String,
     scale: Option<f64>,
+    #[serde(default)]
+    kind: ShoppingListItemKind,
+    name: Option<String>,
+    quantity: Option<String>,
 }
 
 pub async fn shopping_list(
     State(state): State<Arc<AppState>>,
     axum::extract::Json(payload): axum::extract::Json<Vec<RecipeRequest>>,
 ) -> Result<Json<serde_json::Value>, StatusCode> {
+    let entries = payload;
     let mut list = IngredientList::new();
     let mut seen = BTreeMap::new();
 
-    for entry in payload {
+    for entry in entries.iter() {
+        if entry.kind == ShoppingListItemKind::Custom {
+            continue;
+        }
+
         let recipe_with_scale = if let Some(scale) = entry.scale {
             format!("{}:{}", entry.recipe, scale)
         } else {
-            entry.recipe
+            entry.recipe.clone()
         };
 
         extract_ingredients(
@@ -157,6 +166,36 @@ pub async fn shopping_list(
         }
     }
 
+    // Add any custom items from the payload as their own category
+    let custom_items: Vec<_> = entries
+        .into_iter()
+        .filter(|entry| entry.kind == ShoppingListItemKind::Custom)
+        .filter_map(|entry| {
+            entry
+                .name
+                .or_else(|| Some(entry.recipe.clone()))
+                .map(|name| (name, entry.quantity))
+        })
+        .collect();
+
+    if !custom_items.is_empty() {
+        let mut items = Vec::new();
+        for (name, quantity) in custom_items {
+            let item_json = serde_json::json!({
+                "name": name,
+                "quantities": quantity
+                    .map(|q| vec![serde_json::json!({"value": q})])
+                    .unwrap_or_else(Vec::new)
+            });
+            items.push(item_json);
+        }
+
+        shopping_categories.push(serde_json::json!({
+            "category": "Custom Items",
+            "items": items
+        }));
+    }
+
     let json_value = serde_json::json!({
         "categories": shopping_categories,
         "pantry_items": pantry_items
@@ -177,9 +216,34 @@ pub async fn get_shopping_list_items(
 
 #[derive(Debug, Deserialize)]
 pub struct AddItemRequest {
-    pub path: String,
+    pub path: Option<String>,
     pub name: String,
+    #[serde(default = "default_scale")]
     pub scale: f64,
+    #[serde(default)]
+    pub kind: ShoppingListItemKind,
+    pub quantity: Option<String>,
+}
+
+fn default_scale() -> f64 {
+    1.0
+}
+
+fn generate_custom_path(name: &str) -> String {
+    let sanitized = name
+        .chars()
+        .filter(|c| c.is_alphanumeric() || c.is_whitespace() || *c == '-')
+        .collect::<String>()
+        .trim()
+        .replace(' ', "-")
+        .to_lowercase();
+
+    let timestamp = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_millis())
+        .unwrap_or(0);
+
+    format!("custom:{}-{}", sanitized, timestamp)
 }
 
 pub async fn add_to_shopping_list(
@@ -187,10 +251,24 @@ pub async fn add_to_shopping_list(
     Json(payload): Json<AddItemRequest>,
 ) -> Result<StatusCode, StatusCode> {
     let store = ShoppingListStore::new(&state.base_path);
+    let path = if payload.kind == ShoppingListItemKind::Custom {
+        payload
+            .path
+            .unwrap_or_else(|| generate_custom_path(&payload.name))
+    } else {
+        payload.path.unwrap_or_default().trim().to_string()
+    };
+
+    if path.is_empty() {
+        return Err(StatusCode::BAD_REQUEST);
+    }
+
     let item = ShoppingListItem {
-        path: payload.path,
+        path,
         name: payload.name,
         scale: payload.scale,
+        kind: payload.kind,
+        quantity: payload.quantity,
     };
 
     store.add(item).map_err(|e| {
