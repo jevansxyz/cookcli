@@ -49,6 +49,7 @@ use std::{net::IpAddr, net::SocketAddr, sync::Arc};
 use tower_http::{cors::CorsLayer, services::ServeDir};
 use tracing::{error, info};
 
+mod extra_items_store;
 mod handlers;
 mod i18n;
 mod language;
@@ -351,6 +352,22 @@ fn api(_state: &AppState) -> Result<Router<Arc<AppState>>> {
             post(handlers::remove_from_shopping_list),
         )
         .route("/shopping_list/clear", post(handlers::clear_shopping_list))
+        .route(
+            "/shopping_list/extra_items",
+            get(handlers::get_extra_items),
+        )
+        .route(
+            "/shopping_list/extra_items/add",
+            post(handlers::add_extra_item),
+        )
+        .route(
+            "/shopping_list/extra_items/remove",
+            post(handlers::remove_extra_item),
+        )
+        .route(
+            "/shopping_list/extra_items/clear",
+            post(handlers::clear_extra_items),
+        )
         .route("/pantry", get(handlers::get_pantry))
         .route("/pantry/add", post(handlers::add_pantry_item))
         .route("/pantry/expiring", get(handlers::get_expiring))

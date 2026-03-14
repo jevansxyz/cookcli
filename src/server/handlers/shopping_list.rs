@@ -1,4 +1,5 @@
 use crate::server::{
+    extra_items_store::{ExtraItem, ExtraItemsStore},
     shopping_list_store::{ShoppingListItem, ShoppingListStore},
     AppState,
 };
@@ -243,5 +244,78 @@ pub async fn clear_shopping_list(
         )
     })?;
 
+    Ok(StatusCode::OK)
+}
+
+pub async fn get_extra_items(
+    State(state): State<Arc<AppState>>,
+) -> Result<Json<Vec<ExtraItem>>, (StatusCode, Json<serde_json::Value>)> {
+    let store = ExtraItemsStore::new(&state.base_path);
+    let items = store.load().map_err(|e| {
+        tracing::error!("Failed to load extra items: {:?}", e);
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({ "error": e.to_string() })),
+        )
+    })?;
+    Ok(Json(items))
+}
+
+#[derive(Debug, Deserialize)]
+pub struct AddExtraItemRequest {
+    pub name: String,
+    pub quantity: String,
+}
+
+pub async fn add_extra_item(
+    State(state): State<Arc<AppState>>,
+    Json(payload): Json<AddExtraItemRequest>,
+) -> Result<StatusCode, (StatusCode, Json<serde_json::Value>)> {
+    let store = ExtraItemsStore::new(&state.base_path);
+    let item = ExtraItem {
+        name: payload.name,
+        quantity: payload.quantity,
+    };
+    store.add(item).map_err(|e| {
+        tracing::error!("Failed to add extra item: {:?}", e);
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({ "error": e.to_string() })),
+        )
+    })?;
+    Ok(StatusCode::OK)
+}
+
+#[derive(Debug, Deserialize)]
+pub struct RemoveExtraItemRequest {
+    pub name: String,
+}
+
+pub async fn remove_extra_item(
+    State(state): State<Arc<AppState>>,
+    Json(payload): Json<RemoveExtraItemRequest>,
+) -> Result<StatusCode, (StatusCode, Json<serde_json::Value>)> {
+    let store = ExtraItemsStore::new(&state.base_path);
+    store.remove(&payload.name).map_err(|e| {
+        tracing::error!("Failed to remove extra item: {:?}", e);
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({ "error": e.to_string() })),
+        )
+    })?;
+    Ok(StatusCode::OK)
+}
+
+pub async fn clear_extra_items(
+    State(state): State<Arc<AppState>>,
+) -> Result<StatusCode, (StatusCode, Json<serde_json::Value>)> {
+    let store = ExtraItemsStore::new(&state.base_path);
+    store.clear().map_err(|e| {
+        tracing::error!("Failed to clear extra items: {:?}", e);
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({ "error": e.to_string() })),
+        )
+    })?;
     Ok(StatusCode::OK)
 }

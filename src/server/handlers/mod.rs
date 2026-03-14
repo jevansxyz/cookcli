@@ -14,7 +14,8 @@ pub use pantry::{
 };
 pub use recipes::{all_recipes, recipe, recipe_delete, recipe_raw, recipe_save, reload, search};
 pub use shopping_list::{
-    add_to_shopping_list, clear_shopping_list, get_shopping_list_items, remove_from_shopping_list,
+    add_extra_item, add_to_shopping_list, clear_extra_items, clear_shopping_list,
+    get_extra_items, get_shopping_list_items, remove_extra_item, remove_from_shopping_list,
     shopping_list,
 };
 pub use stats::stats;
