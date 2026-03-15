@@ -29,7 +29,6 @@
                         Add
                     </button>
                 </form>
-                <div id="extra-items-list" class="space-y-1"></div>
                 <div id="extra-items-clear-btn" class="hidden mt-2">
                     <button onclick="clearExtraItems()" class="w-full px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-all">
                         Clear All Extra Items
@@ -491,31 +490,13 @@ async function loadExtraItems() {
     try {
         const response = await fetch('/api/shopping_list/extra_items');
         extraItems = await response.json();
-        renderExtraItems();
         renderExtraItemsInList();
+        document.getElementById('extra-items-clear-btn').classList.toggle('hidden', extraItems.length === 0);
     } catch (error) {
         console.error('Failed to load extra items:', error);
     }
 }
 
-function renderExtraItems() {
-    const container = document.getElementById('extra-items-list');
-    const clearBtn = document.getElementById('extra-items-clear-btn');
-    if (extraItems.length === 0) {
-        container.innerHTML = '<p class="text-gray-400 text-sm">No extra items added yet.</p>';
-        clearBtn.classList.add('hidden');
-        return;
-    }
-    clearBtn.classList.remove('hidden');
-    container.innerHTML = extraItems.map(item => `
-        <div class="flex items-center justify-between bg-blue-50 border border-blue-200 rounded-lg px-3 py-2">
-            <span class="text-sm text-gray-800 font-medium">${escapeHtml(item.name)}</span>
-            ${item.quantity ? `<span class="text-xs text-blue-600 ml-2">${escapeHtml(item.quantity)}</span>` : ''}
-            <button onclick="removeExtraItem('${escapeHtml(item.name).replace(/'/g, "\\'")}')"
-                class="ml-2 text-red-400 hover:text-red-600 text-xs font-medium flex-shrink-0">Remove</button>
-        </div>
-    `).join('');
-}
 
 function renderExtraItemsInList() {
     // Remove any existing extra items section from the main list
