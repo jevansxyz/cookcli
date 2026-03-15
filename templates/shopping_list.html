@@ -66,6 +66,12 @@
             </div>
         </div>
         <div id="shopping-list-results">
+            <div id="list-toolbar" class="hidden flex justify-end mb-3">
+                <button id="hide-ticked-btn" onclick="toggleHideTicked()"
+                    class="px-3 py-1.5 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-all">
+                    Hide ticked items
+                </button>
+            </div>
             <div id="list-content"></div>
         </div>
     </div>
@@ -419,6 +425,7 @@ function toggleItem(itemId, checked, ingredientName) {
 
     // Save to localStorage using ingredient names
     localStorage.setItem('checkedShoppingItems', JSON.stringify(Array.from(checkedItems)));
+    applyHideTicked();
 }
 
 function loadCheckedStates() {
@@ -441,6 +448,29 @@ function loadCheckedStates() {
             }
         });
     }
+    applyHideTicked();
+}
+
+let hideTicked = false;
+
+function toggleHideTicked() {
+    hideTicked = !hideTicked;
+    document.getElementById('hide-ticked-btn').textContent = hideTicked ? 'Show ticked items' : 'Hide ticked items';
+    applyHideTicked();
+}
+
+function applyHideTicked() {
+    document.querySelectorAll('#list-content li').forEach(li => {
+        const checkbox = li.querySelector('input[type="checkbox"]');
+        if (checkbox && checkbox.checked) {
+            li.style.display = hideTicked ? 'none' : '';
+        }
+    });
+}
+
+function updateListToolbar() {
+    const hasItems = document.querySelectorAll('#list-content li').length > 0;
+    document.getElementById('list-toolbar').classList.toggle('hidden', !hasItems);
 }
 
 // Clear checked items when clearing the list
@@ -449,6 +479,9 @@ clearList = async function() {
     await originalClearList();
     checkedItems.clear();
     localStorage.removeItem('checkedShoppingItems');
+    hideTicked = false;
+    const btn = document.getElementById('hide-ticked-btn');
+    if (btn) btn.textContent = 'Hide ticked items';
 }
 
 // Extra items management
@@ -531,6 +564,7 @@ function renderExtraItemsInList() {
     `;
     contentDiv.appendChild(section);
     loadCheckedStates();
+    updateListToolbar();
 }
 
 async function addExtraItem(event) {
@@ -611,6 +645,7 @@ const originalDisplayShoppingList = displayShoppingList;
 displayShoppingList = function(data) {
     originalDisplayShoppingList(data);
     renderExtraItemsInList();
+    updateListToolbar();
 }
 
 loadShoppingList().then(() => loadExtraItems());
