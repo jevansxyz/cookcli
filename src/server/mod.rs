@@ -393,6 +393,8 @@ fn api(_state: &AppState) -> Result<Router<Arc<AppState>>> {
         .route("/search", get(handlers::search))
         .route("/stats", get(handlers::stats))
         .route("/reload", get(handlers::reload).post(handlers::reload))
+        .route("/order", axum::routing::put(handlers::save_order_root))
+        .route("/order/*path", axum::routing::put(handlers::save_order_path))
         .route("/ws/lsp", get(lsp_bridge::lsp_websocket));
 
     #[cfg(feature = "sync")]

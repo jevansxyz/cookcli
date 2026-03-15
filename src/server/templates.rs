@@ -55,6 +55,7 @@ pub struct TodaysMenu {
 pub struct RecipesTemplate {
     pub active: String,
     pub current_name: String,
+    pub current_path: String,
     pub breadcrumbs: Vec<Breadcrumb>,
     pub items: Vec<RecipeItem>,
     pub todays_menu: Option<TodaysMenu>,

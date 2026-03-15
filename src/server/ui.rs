@@ -145,9 +145,30 @@ async fn recipes_handler(
         });
     }
 
+    // Read optional .order file for custom folder ordering
+    let order_file = search_path.join(".order");
+    let custom_order: Vec<String> = match tokio::fs::read_to_string(&order_file).await {
+        Ok(content) => content
+            .lines()
+            .filter(|l| !l.is_empty())
+            .map(String::from)
+            .collect(),
+        Err(_) => vec![],
+    };
+
     items.sort_by(|a, b| match (a.is_directory, b.is_directory) {
         (true, false) => std::cmp::Ordering::Less,
         (false, true) => std::cmp::Ordering::Greater,
+        (true, true) if !custom_order.is_empty() => {
+            let pos_a = custom_order.iter().position(|n| n == &a.name);
+            let pos_b = custom_order.iter().position(|n| n == &b.name);
+            match (pos_a, pos_b) {
+                (Some(ia), Some(ib)) => ia.cmp(&ib),
+                (Some(_), None) => std::cmp::Ordering::Less,
+                (None, Some(_)) => std::cmp::Ordering::Greater,
+                (None, None) => a.name.cmp(&b.name),
+            }
+        }
         _ => a.name.cmp(&b.name),
     });
 
@@ -183,6 +204,7 @@ async fn recipes_handler(
     let template = RecipesTemplate {
         active: "recipes".to_string(),
         current_name,
+        current_path: path.unwrap_or_default(),
         breadcrumbs,
         items,
         todays_menu,
