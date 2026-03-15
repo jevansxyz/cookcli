@@ -204,7 +204,6 @@ async fn recipes_handler(
     let template = RecipesTemplate {
         active: "recipes".to_string(),
         current_name,
-        current_path: path.unwrap_or_default(),
         breadcrumbs,
         items,
         todays_menu,

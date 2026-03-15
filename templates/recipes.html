@@ -23,12 +23,6 @@
             {{ current_name }}
         </h1>
         <div class="flex items-center gap-3">
-            <button id="edit-order-btn" onclick="toggleEditOrder()" class="hidden px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors flex items-center gap-2 text-sm font-medium border border-gray-300">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
-                </svg>
-                <span id="edit-order-label">Edit Order</span>
-            </button>
             <a href="/new" class="px-4 py-2 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-lg hover:from-orange-600 hover:to-red-600 transition-all shadow-md flex items-center gap-2">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
@@ -64,7 +58,7 @@
     <div id="items-grid" class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
         {% for item in items %}
         {% if item.is_directory %}
-        <div class="relative folder-wrapper" data-folder-name="{{ item.name }}">
+        <div>
             <a href="/directory/{{ item.path }}" class="bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-xl transition-all hover:scale-105 recipe-card flex flex-col block w-full">
                 {% match item.image_path %}
                 {% when Some with (img) %}
@@ -86,28 +80,6 @@
                 {% endmatch %}
                 </div>
             </a>
-            <!-- Order controls (visible in edit-order mode) -->
-            <div class="folder-order-controls hidden absolute top-2 right-2 z-10">
-                <button onclick="toggleFolderMenu(this, event)" class="w-8 h-8 flex items-center justify-center bg-white rounded-full shadow-md border border-gray-200 text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors">
-                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                        <circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/>
-                    </svg>
-                </button>
-                <div class="folder-order-menu hidden absolute right-0 mt-1 bg-white rounded-xl shadow-xl border border-gray-100 z-20 overflow-hidden" style="min-width:130px">
-                    <button onclick="moveFolderUp(this, event)" class="folder-up-btn w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path>
-                        </svg>
-                        Move Up
-                    </button>
-                    <button onclick="moveFolderDown(this, event)" class="folder-down-btn w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-                        </svg>
-                        Move Down
-                    </button>
-                </div>
-            </div>
         </div>
         {% else %}
         <a href="/recipe/{{ item.path }}" class="bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-xl transition-all hover:scale-105 recipe-card flex flex-col">
@@ -157,136 +129,4 @@
     </div>
 </div>
 
-<script>
-const currentPath = {{ current_path|json|safe }};
-let editOrderMode = false;
-let openMenu = null;
-
-// Show Edit Order button only when there are folders to reorder
-document.addEventListener('DOMContentLoaded', function() {
-    const folders = document.querySelectorAll('.folder-wrapper');
-    if (folders.length > 1) {
-        document.getElementById('edit-order-btn').classList.remove('hidden');
-    }
-    updateArrowStates();
-
-    // Close any open dropdown when clicking elsewhere
-    document.addEventListener('click', function(e) {
-        if (openMenu && !openMenu.contains(e.target)) {
-            closeAllMenus();
-        }
-    });
-});
-
-function toggleEditOrder() {
-    editOrderMode = !editOrderMode;
-    const controls = document.querySelectorAll('.folder-order-controls');
-    const label = document.getElementById('edit-order-label');
-    const btn = document.getElementById('edit-order-btn');
-
-    if (editOrderMode) {
-        controls.forEach(c => c.classList.remove('hidden'));
-        label.textContent = 'Done';
-        btn.classList.remove('bg-gray-100', 'text-gray-700', 'border-gray-300');
-        btn.classList.add('bg-orange-100', 'text-orange-700', 'border-orange-300');
-    } else {
-        controls.forEach(c => c.classList.add('hidden'));
-        closeAllMenus();
-        label.textContent = 'Edit Order';
-        btn.classList.add('bg-gray-100', 'text-gray-700', 'border-gray-300');
-        btn.classList.remove('bg-orange-100', 'text-orange-700', 'border-orange-300');
-    }
-    updateArrowStates();
-}
-
-function toggleFolderMenu(triggerBtn, event) {
-    event.preventDefault();
-    event.stopPropagation();
-    const controls = triggerBtn.closest('.folder-order-controls');
-    const menu = controls.querySelector('.folder-order-menu');
-
-    if (!menu.classList.contains('hidden')) {
-        menu.classList.add('hidden');
-        openMenu = null;
-        return;
-    }
-
-    closeAllMenus();
-    menu.classList.remove('hidden');
-    openMenu = controls;
-}
-
-function closeAllMenus() {
-    document.querySelectorAll('.folder-order-menu').forEach(m => m.classList.add('hidden'));
-    openMenu = null;
-}
-
-function getFolderWrappers() {
-    return Array.from(document.querySelectorAll('#items-grid .folder-wrapper'));
-}
-
-function updateArrowStates() {
-    const wrappers = getFolderWrappers();
-    wrappers.forEach((wrapper, idx) => {
-        const upBtn = wrapper.querySelector('.folder-up-btn');
-        const downBtn = wrapper.querySelector('.folder-down-btn');
-        if (upBtn) upBtn.disabled = (idx === 0);
-        if (downBtn) downBtn.disabled = (idx === wrappers.length - 1);
-    });
-}
-
-function moveFolderUp(btn, event) {
-    event.preventDefault();
-    event.stopPropagation();
-    const wrapper = btn.closest('.folder-wrapper');
-    const wrappers = getFolderWrappers();
-    const idx = wrappers.indexOf(wrapper);
-    if (idx <= 0) return;
-
-    const grid = document.getElementById('items-grid');
-    const prev = wrappers[idx - 1];
-    grid.insertBefore(wrapper, prev);
-
-    closeAllMenus();
-    updateArrowStates();
-    saveOrder();
-}
-
-function moveFolderDown(btn, event) {
-    event.preventDefault();
-    event.stopPropagation();
-    const wrapper = btn.closest('.folder-wrapper');
-    const wrappers = getFolderWrappers();
-    const idx = wrappers.indexOf(wrapper);
-    if (idx >= wrappers.length - 1) return;
-
-    const grid = document.getElementById('items-grid');
-    const next = wrappers[idx + 1];
-    grid.insertBefore(next, wrapper);
-
-    closeAllMenus();
-    updateArrowStates();
-    saveOrder();
-}
-
-async function saveOrder() {
-    const order = getFolderWrappers().map(w => w.dataset.folderName);
-    const url = currentPath
-        ? `/api/order/${currentPath}`
-        : '/api/order';
-
-    try {
-        const resp = await fetch(url, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ order })
-        });
-        if (!resp.ok) {
-            console.error('Failed to save folder order:', await resp.text());
-        }
-    } catch (e) {
-        console.error('Failed to save folder order:', e);
-    }
-}
-</script>
 {% endblock %}
