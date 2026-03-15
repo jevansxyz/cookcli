@@ -144,3 +144,11 @@
     height: 1rem;
     margin-right: 0.5rem;
 }
+/* Bin icon buttons in shopping list headings */
+.bin-btn {
+    color: #9ca3af; /* gray-400 */
+    transition: color 0.15s ease;
+}
+.bin-btn:hover {
+    color: #ef4444; /* red-500 */
+}
