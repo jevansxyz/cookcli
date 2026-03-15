@@ -106,6 +106,25 @@ async fn recipes_handler(
                 }
             });
             (recipe.tags(), img_path, recipe.is_menu())
+        } else if is_dir {
+            // Check for folder.jpeg/folder.jpg/folder.png in the directory
+            let dir_path = search_path.join(name.as_str());
+            let dir_img = ["folder.jpeg", "folder.jpg", "folder.png"]
+                .iter()
+                .find(|&&img_name| dir_path.join(img_name).exists())
+                .map(|&img_name| {
+                    let img_full = dir_path.join(img_name);
+                    if let Ok(relative) = img_full.strip_prefix(base) {
+                        format!("/api/static/{relative}")
+                    } else {
+                        let prefix = match &path {
+                            Some(p) => format!("{p}/{name}"),
+                            None => name.to_string(),
+                        };
+                        format!("/api/static/{prefix}/{img_name}")
+                    }
+                });
+            (Vec::new(), dir_img, false)
         } else {
             (Vec::new(), None, false)
         };
