@@ -352,10 +352,7 @@ fn api(_state: &AppState) -> Result<Router<Arc<AppState>>> {
             post(handlers::remove_from_shopping_list),
         )
         .route("/shopping_list/clear", post(handlers::clear_shopping_list))
-        .route(
-            "/shopping_list/extra_items",
-            get(handlers::get_extra_items),
-        )
+        .route("/shopping_list/extra_items", get(handlers::get_extra_items))
         .route(
             "/shopping_list/extra_items/add",
             post(handlers::add_extra_item),
@@ -394,7 +391,10 @@ fn api(_state: &AppState) -> Result<Router<Arc<AppState>>> {
         .route("/stats", get(handlers::stats))
         .route("/reload", get(handlers::reload).post(handlers::reload))
         .route("/order", axum::routing::put(handlers::save_order_root))
-        .route("/order/*path", axum::routing::put(handlers::save_order_path))
+        .route(
+            "/order/*path",
+            axum::routing::put(handlers::save_order_path),
+        )
         .route("/ws/lsp", get(lsp_bridge::lsp_websocket));
 
     #[cfg(feature = "sync")]
