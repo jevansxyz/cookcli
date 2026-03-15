@@ -16,26 +16,6 @@
                 </button>
             </div>
 
-            <!-- Extra items section -->
-            <div class="mt-6">
-                <h3 class="font-bold text-lg mb-3 text-blue-600">Extra Items</h3>
-                <form onsubmit="addExtraItem(event)" class="flex gap-2 mb-3">
-                    <input type="text" id="extra-item-name" placeholder="Item name" required
-                        class="flex-1 min-w-0 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400">
-                    <input type="text" id="extra-item-quantity" placeholder="Qty (optional)"
-                        class="w-28 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400">
-                    <button type="submit"
-                        class="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all text-sm font-medium">
-                        Add
-                    </button>
-                </form>
-                <div id="extra-items-clear-btn" class="hidden mt-2">
-                    <button onclick="clearExtraItems()" class="w-full px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-all">
-                        Clear All
-                    </button>
-                </div>
-            </div>
-
             <!-- Pantry items section -->
             <div id="pantry-section" class="hidden mt-6">
                 <h3 class="font-bold text-lg mb-3 text-green-600">{{ tr.t("shopping-in-pantry") }}</h3>
@@ -314,7 +294,6 @@ function displayShoppingList(data) {
 
     // Display items to buy (organized by aisle)
     if (data.categories && data.categories.length > 0) {
-        html += '<h2 class="text-2xl font-bold mb-4 text-orange-700">{{ tr.t("shopping-title") }}</h2>';
         html += data.categories.map(category => `
             <div class="mb-6 bg-white rounded-lg p-4 shadow-sm">
                 <h3 class="font-semibold text-lg mb-3 text-orange-600">${category.category}</h3>
@@ -491,7 +470,6 @@ async function loadExtraItems() {
         const response = await fetch('/api/shopping_list/extra_items');
         extraItems = await response.json();
         renderExtraItemsInList();
-        document.getElementById('extra-items-clear-btn').classList.toggle('hidden', extraItems.length === 0);
     } catch (error) {
         console.error('Failed to load extra items:', error);
     }
@@ -502,15 +480,6 @@ function renderExtraItemsInList() {
     // Remove any existing extra items section from the main list
     const existing = document.getElementById('extra-items-section');
     if (existing) existing.remove();
-
-    if (extraItems.length === 0) {
-        // If no recipes either, restore the placeholder
-        const contentDiv = document.getElementById('list-content');
-        if (contentDiv.innerHTML.trim() === '') {
-            contentDiv.innerHTML = '<p class="text-gray-500">{{ tr.t("shopping-no-items") }}</p>';
-        }
-        return;
-    }
 
     const contentDiv = document.getElementById('list-content');
     // If the only content is the "no items" placeholder, clear it so extra items show cleanly
@@ -542,8 +511,24 @@ function renderExtraItemsInList() {
                 `;
             }).join('')}
         </ul>
+        <form onsubmit="addExtraItem(event)" class="flex gap-2 mt-3">
+            <input type="text" id="extra-item-name" placeholder="Item name" required
+                class="flex-1 min-w-0 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400">
+            <input type="text" id="extra-item-quantity" placeholder="Qty (optional)"
+                class="w-28 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400">
+            <button type="submit"
+                class="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all text-sm font-medium">
+                Add
+            </button>
+        </form>
+        ${extraItems.length > 0 ? `
+        <div class="mt-2">
+            <button onclick="clearExtraItems()" class="w-full px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-all">
+                Clear All
+            </button>
+        </div>` : ''}
     `;
-    contentDiv.appendChild(section);
+    contentDiv.prepend(section);
     loadCheckedStates();
     updateListToolbar();
 }
