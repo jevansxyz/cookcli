@@ -32,7 +32,9 @@ use clap::{Parser, Subcommand};
 
 #[cfg(feature = "self-update")]
 use crate::update;
-use crate::{doctor, import, lsp, pantry, recipe, report, search, seed, server, shopping_list};
+use crate::{
+    doctor, grab, import, lsp, pantry, recipe, report, search, seed, server, shopping_list,
+};
 
 #[derive(Parser, Debug)]
 #[command(
@@ -196,6 +198,23 @@ pub enum Command {
         long_about = "Manage pantry inventory with full CRUD support and recipe-based analysis"
     )]
     Pantry(pantry::PantryArgs),
+
+    /// Grab a recipe from a URL, convert with Claude AI, and save to ~/cooklang/recipes/To Try
+    ///
+    /// Fetches the recipe from the given URL, uses Claude AI to convert it to
+    /// Cooklang format with metric units, downloads the recipe image, and saves
+    /// both to ~/cooklang/recipes/To Try/ (or a custom directory).
+    ///
+    /// Requires the ANTHROPIC_API_KEY environment variable to be set.
+    ///
+    /// Examples:
+    ///   cook grab https://www.allrecipes.com/recipe/...
+    ///   cook grab https://www.bbcgoodfood.com/recipes/... -o ~/recipes
+    #[command(
+        alias = "g",
+        long_about = "Fetch a recipe from a URL, convert to metric Cooklang via Claude AI, and save with image"
+    )]
+    Grab(grab::GrabArgs),
 
     /// Start the Cooklang Language Server Protocol (LSP) server
     ///

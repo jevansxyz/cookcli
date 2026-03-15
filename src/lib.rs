@@ -4,6 +4,7 @@ use camino::{Utf8Path, Utf8PathBuf};
 
 // Commands - make them available as public modules
 pub mod doctor;
+pub mod grab;
 pub mod import;
 pub mod lsp;
 pub mod pantry;

@@ -36,6 +36,7 @@ use clap::Parser;
 
 // commands
 mod doctor;
+mod grab;
 mod import;
 mod lsp;
 mod pantry;
@@ -71,6 +72,7 @@ pub fn main() -> Result<()> {
         Command::Seed(args) => seed::run(&ctx, args),
         Command::Search(args) => search::run(&ctx, args),
         Command::Import(args) => import::run(&ctx, args),
+        Command::Grab(args) => grab::run(&ctx, args),
         Command::Report(args) => report::run(&ctx, args),
         Command::Doctor(args) => doctor::run(&ctx, args),
         Command::Pantry(args) => pantry::run(&ctx, args),
