@@ -854,6 +854,7 @@ async fn edit_page(
 struct NewPageQuery {
     error: Option<String>,
     filename: Option<String>,
+    url: Option<String>,
 }
 
 async fn new_page(
@@ -865,21 +866,24 @@ async fn new_page(
         tr: Tr::new(lang),
         error: query.error,
         filename: query.filename,
+        url: query.url,
     }
 }
 
 #[derive(Deserialize)]
 struct NewRecipeForm {
     filename: String,
+    url: Option<String>,
 }
 
 /// Helper to build redirect URL with error message
-fn new_page_error(error: &str, filename: &str) -> axum::response::Response {
+fn new_page_error(error: &str, filename: &str, url: &str) -> axum::response::Response {
     let encoded_error = urlencoding::encode(error);
     let encoded_filename = urlencoding::encode(filename);
+    let encoded_url = urlencoding::encode(url);
     axum::response::Redirect::to(&format!(
-        "/new?error={}&filename={}",
-        encoded_error, encoded_filename
+        "/new?error={}&filename={}&url={}",
+        encoded_error, encoded_filename, encoded_url
     ))
     .into_response()
 }
@@ -939,10 +943,15 @@ async fn create_recipe(
     }
 
     let original_filename = form.filename.clone();
+    let original_url = form.url.as_deref().unwrap_or("").to_string();
 
     // Validate input before sanitization
     if form.filename.trim().is_empty() {
-        return new_page_error("Recipe name cannot be empty", &original_filename);
+        return new_page_error(
+            "Recipe name cannot be empty",
+            &original_filename,
+            &original_url,
+        );
     }
 
     // Sanitize path - allow alphanumeric, space, dash, underscore, and forward slash
@@ -961,7 +970,11 @@ async fn create_recipe(
         .join("/");
 
     if recipe_path.is_empty() {
-        return new_page_error("Recipe name cannot be empty", &original_filename);
+        return new_page_error(
+            "Recipe name cannot be empty",
+            &original_filename,
+            &original_url,
+        );
     }
 
     let file_path = state.base_path.join(format!("{}.cook", recipe_path));
@@ -973,7 +986,11 @@ async fn create_recipe(
         match tokio::task::spawn_blocking(move || base_path_clone.canonicalize_utf8()).await {
             Ok(Ok(p)) => p,
             _ => {
-                return new_page_error("Internal error: invalid base path", &original_filename);
+                return new_page_error(
+                    "Internal error: invalid base path",
+                    &original_filename,
+                    &original_url,
+                );
             }
         };
 
@@ -982,7 +999,7 @@ async fn create_recipe(
     let normalized_path = file_path.as_str().replace("\\", "/");
     if normalized_path.contains("/../") || normalized_path.ends_with("/..") {
         tracing::warn!("Path traversal attempt detected in: {}", recipe_path);
-        return new_page_error("Invalid recipe path", &original_filename);
+        return new_page_error("Invalid recipe path", &original_filename, &original_url);
     }
 
     // For the file path, we check the parent directory
@@ -991,7 +1008,11 @@ async fn create_recipe(
         if !parent.exists() {
             if let Err(e) = tokio::fs::create_dir_all(parent).await {
                 tracing::error!("Failed to create directories: {}", e);
-                return new_page_error("Failed to create directory", &original_filename);
+                return new_page_error(
+                    "Failed to create directory",
+                    &original_filename,
+                    &original_url,
+                );
             }
         }
 
@@ -1007,11 +1028,15 @@ async fn create_recipe(
                     );
                     // Clean up the created directory if it's outside base_path
                     let _ = tokio::fs::remove_dir_all(parent).await;
-                    return new_page_error("Invalid recipe path", &original_filename);
+                    return new_page_error(
+                        "Invalid recipe path",
+                        &original_filename,
+                        &original_url,
+                    );
                 }
             }
             _ => {
-                return new_page_error("Invalid recipe path", &original_filename);
+                return new_page_error("Invalid recipe path", &original_filename, &original_url);
             }
         }
     }
@@ -1023,8 +1048,40 @@ async fn create_recipe(
         .unwrap_or(&recipe_path)
         .replace(['-', '_'], " ");
 
-    // Create recipe with YAML frontmatter
-    let template = format!("---\ntitle: {}\n---\n\n", recipe_name);
+    // Build recipe content: import from URL via Claude, or create blank template
+    let import_url = form
+        .url
+        .as_deref()
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .map(str::to_string);
+    let content = if let Some(url) = import_url {
+        let recipe_name_owned = recipe_name.clone();
+        let result = tokio::task::spawn_blocking(move || {
+            // url_to_recipe returns a !Send future, so run it in a
+            // dedicated single-threaded runtime inside a blocking thread.
+            let rt = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()?;
+            rt.block_on(build_imported_content(&url, &recipe_name_owned))
+        })
+        .await;
+        match result {
+            Ok(Ok(c)) => c,
+            Ok(Err(e)) => {
+                return new_page_error(&e.to_string(), &original_filename, &original_url);
+            }
+            Err(e) => {
+                return new_page_error(
+                    &format!("Import task failed: {}", e),
+                    &original_filename,
+                    &original_url,
+                );
+            }
+        }
+    } else {
+        format!("---\ntitle: {}\n---\n\n", recipe_name)
+    };
 
     // Use OpenOptions with create_new to atomically check existence and create
     // This prevents TOCTOU race conditions
@@ -1037,22 +1094,69 @@ async fn create_recipe(
 
     match file {
         Ok(mut f) => {
-            if let Err(e) = f.write_all(template.as_bytes()).await {
+            if let Err(e) = f.write_all(content.as_bytes()).await {
                 tracing::error!("Failed to write recipe: {}", e);
-                return new_page_error("Failed to write recipe file", &original_filename);
+                return new_page_error(
+                    "Failed to write recipe file",
+                    &original_filename,
+                    &original_url,
+                );
             }
         }
         Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => {
-            return new_page_error("A recipe with this name already exists", &original_filename);
+            return new_page_error(
+                "A recipe with this name already exists",
+                &original_filename,
+                &original_url,
+            );
         }
         Err(e) => {
             tracing::error!("Failed to create recipe file: {}", e);
-            return new_page_error("Failed to create recipe file", &original_filename);
+            return new_page_error(
+                "Failed to create recipe file",
+                &original_filename,
+                &original_url,
+            );
         }
     }
 
     // Redirect to editor
     axum::response::Redirect::to(&format!("/edit/{}.cook", recipe_path)).into_response()
+}
+
+/// Fetch a recipe from a URL and convert it to Cooklang using Claude AI (metric units).
+/// Returns the full file content including YAML frontmatter.
+async fn build_imported_content(url: &str, recipe_name: &str) -> anyhow::Result<String> {
+    let api_key = std::env::var("ANTHROPIC_API_KEY").map_err(|_| {
+        anyhow::anyhow!(
+            "ANTHROPIC_API_KEY is not set — cannot import from URL. \
+             Set it with: export ANTHROPIC_API_KEY=your-key"
+        )
+    })?;
+
+    tracing::info!("Fetching recipe from {}", url);
+    let recipe = cooklang_import::url_to_recipe(url)
+        .await
+        .map_err(|e| anyhow::anyhow!("Failed to fetch recipe from URL: {}", e))?;
+
+    let title = if recipe.name.is_empty() {
+        recipe_name.to_string()
+    } else {
+        recipe.name.clone()
+    };
+
+    tracing::info!("Converting '{}' to Cooklang with Claude", title);
+    let cooklang_body = crate::grab::call_claude(&api_key, &title, &recipe.text).await?;
+
+    // Build YAML frontmatter
+    let mut frontmatter = format!("---\ntitle: {}\nsource: {}\n", title, url);
+    if let Some(img) = crate::grab::extract_image_url(url).await {
+        frontmatter.push_str(&format!("image: {}\n", img));
+    }
+    frontmatter.push_str("---\n\n");
+    frontmatter.push_str(&cooklang_body);
+
+    Ok(frontmatter)
 }
 
 fn get_image_path(base_path: &Utf8PathBuf, img_path: String) -> Option<String> {

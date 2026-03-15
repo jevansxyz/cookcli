@@ -47,6 +47,9 @@ new-recipe-filename = Recipe name
 new-recipe-placeholder = Dinner/Italian/Pasta Carbonara
 new-recipe-hint = Use folder/recipe-name format
 new-recipe-create = Create Recipe
+new-recipe-url = Recipe URL (optional)
+new-recipe-url-placeholder = https://...
+new-recipe-url-hint = Paste a recipe URL to import and convert with Claude AI (metric units)
 
 # Delete Recipe
 delete-recipe = Delete Recipe

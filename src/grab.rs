@@ -53,7 +53,7 @@ struct ClaudeContent {
     text: String,
 }
 
-async fn call_claude(api_key: &str, recipe_name: &str, recipe_text: &str) -> Result<String> {
+pub async fn call_claude(api_key: &str, recipe_name: &str, recipe_text: &str) -> Result<String> {
     let client = reqwest::Client::new();
 
     let prompt = format!(
@@ -108,7 +108,7 @@ async fn call_claude(api_key: &str, recipe_name: &str, recipe_text: &str) -> Res
         .context("Empty response from Claude API")
 }
 
-async fn extract_image_url(page_url: &str) -> Option<String> {
+pub async fn extract_image_url(page_url: &str) -> Option<String> {
     let client = reqwest::Client::builder()
         .user_agent("Mozilla/5.0 (compatible; CookCLI/1.0)")
         .build()

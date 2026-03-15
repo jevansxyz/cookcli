@@ -47,6 +47,9 @@ new-recipe-filename = Rezeptname
 new-recipe-placeholder = Abendessen/Italienisch/Pasta Carbonara
 new-recipe-hint = Format: Ordner/Rezeptname
 new-recipe-create = Rezept erstellen
+new-recipe-url = Rezept-URL (optional)
+new-recipe-url-placeholder = https://...
+new-recipe-url-hint = URL einfügen, um das Rezept mit Claude AI zu importieren (metrische Einheiten)
 
 # Delete Recipe
 delete-recipe = Rezept löschen

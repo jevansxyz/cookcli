@@ -47,6 +47,9 @@ new-recipe-filename = Receptnaam
 new-recipe-placeholder = Avondeten/Italiaans/Pasta Carbonara
 new-recipe-hint = Formaat: map/receptnaam
 new-recipe-create = Recept Aanmaken
+new-recipe-url = Recept-URL (optioneel)
+new-recipe-url-placeholder = https://...
+new-recipe-url-hint = Plak een URL om het recept te importeren met Claude AI (metrische eenheden)
 
 # Delete Recipe
 delete-recipe = Recept Verwijderen

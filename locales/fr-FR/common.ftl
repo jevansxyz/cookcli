@@ -47,6 +47,9 @@ new-recipe-filename = Nom de la recette
 new-recipe-placeholder = Diner/Italien/Pates Carbonara
 new-recipe-hint = Format: dossier/nom-recette
 new-recipe-create = Creer la Recette
+new-recipe-url = URL de la recette (optionnel)
+new-recipe-url-placeholder = https://...
+new-recipe-url-hint = Collez une URL pour importer et convertir avec Claude AI (unités métriques)
 
 # Delete Recipe
 delete-recipe = Supprimer la Recette

@@ -214,6 +214,7 @@ pub struct NewTemplate {
     pub tr: Tr,
     pub error: Option<String>,
     pub filename: Option<String>,
+    pub url: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize)]
