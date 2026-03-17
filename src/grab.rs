@@ -53,6 +53,48 @@ struct ClaudeContent {
     text: String,
 }
 
+/// Build canonical YAML frontmatter from recipe components.
+///
+/// Canonical field order follows https://cooklang.org/docs/conventions/:
+/// title, source, servings, prep time, cook time, author, description,
+/// course, cuisine, tags, diet, image.
+///
+/// `metadata_str` is the raw YAML string (without `---` delimiters) returned
+/// by `url_to_recipe`.
+pub fn build_canonical_frontmatter(title: &str, url: &str, metadata_str: &str) -> String {
+    // Parse "key: value" lines into a map (first occurrence wins).
+    let mut meta: std::collections::HashMap<String, String> = std::collections::HashMap::new();
+    for line in metadata_str.lines() {
+        if let Some((key, value)) = line.split_once(": ") {
+            meta.entry(key.to_string()).or_insert_with(|| value.to_string());
+        }
+    }
+
+    const CANONICAL: &[&str] = &[
+        "servings",
+        "prep time",
+        "cook time",
+        "author",
+        "description",
+        "course",
+        "cuisine",
+        "tags",
+        "diet",
+        "image",
+    ];
+
+    let mut fm = String::from("---\n");
+    fm.push_str(&format!("title: {}\n", title));
+    fm.push_str(&format!("source: {}\n", url));
+    for &key in CANONICAL {
+        if let Some(value) = meta.get(key) {
+            fm.push_str(&format!("{}: {}\n", key, value));
+        }
+    }
+    fm.push_str("---\n\n");
+    fm
+}
+
 pub async fn call_claude(api_key: &str, recipe_name: &str, recipe_text: &str) -> Result<String> {
     let client = reqwest::Client::new();
 
@@ -227,7 +269,10 @@ pub fn run(_ctx: &Context, args: GrabArgs) -> Result<()> {
         eprintln!("Found: {}", recipe_name);
         eprintln!("Converting to Cooklang (metric) with Claude...");
 
-        let cooklang_content = call_claude(&api_key, &recipe_name, &recipe.text).await?;
+        let cooklang_body = call_claude(&api_key, &recipe_name, &recipe.text).await?;
+
+        let frontmatter = build_canonical_frontmatter(&recipe_name, &args.url, &recipe.metadata);
+        let cooklang_content = frontmatter + &cooklang_body;
 
         std::fs::create_dir_all(&output_dir)
             .with_context(|| format!("Failed to create directory: {}", output_dir.display()))?;

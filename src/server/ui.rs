@@ -1148,15 +1148,8 @@ async fn build_imported_content(url: &str, recipe_name: &str) -> anyhow::Result<
     tracing::info!("Converting '{}' to Cooklang with Claude", title);
     let cooklang_body = crate::grab::call_claude(&api_key, &title, &recipe.text).await?;
 
-    // Build YAML frontmatter
-    let mut frontmatter = format!("---\ntitle: {}\nsource: {}\n", title, url);
-    if let Some(img) = crate::grab::extract_image_url(url).await {
-        frontmatter.push_str(&format!("image: {}\n", img));
-    }
-    frontmatter.push_str("---\n\n");
-    frontmatter.push_str(&cooklang_body);
-
-    Ok(frontmatter)
+    let frontmatter = crate::grab::build_canonical_frontmatter(&title, url, &recipe.metadata);
+    Ok(frontmatter + &cooklang_body)
 }
 
 fn get_image_path(base_path: &Utf8PathBuf, img_path: String) -> Option<String> {
