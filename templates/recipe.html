@@ -102,56 +102,15 @@
             {% when None %}
             {% endmatch %}
 
-            <!-- Canonical metadata stats bar: servings, prep time, cook time, total time -->
-            {% let has_canonical = metadata.servings.is_some() || metadata.prep_time.is_some() || metadata.cook_time.is_some() || metadata.total_time.is_some() %}
-            {% if has_canonical %}
-            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 print:grid-cols-4">
+            <!-- Metadata row -->
+            <div id="metadata-container" class="flex flex-wrap gap-3">
+                <!-- Display all metadata items -->
 
                 {% match metadata.servings %}
                 {% when Some with (servings) %}
-                <div class="flex flex-col items-center justify-center bg-white border border-orange-200 rounded-xl px-4 py-3 shadow-sm">
-                    <span class="text-2xl mb-1">👥</span>
-                    <span class="text-lg font-bold text-gray-800">{{ servings }}</span>
-                    <span class="text-xs text-gray-500 uppercase tracking-wide">{{ tr.t("meta-servings") }}</span>
-                </div>
+                <span class="metadata-pill metadata-servings">👥 {{ servings }} {{ tr.t("recipe-servings-label") }}</span>
                 {% when None %}
                 {% endmatch %}
-
-                {% match metadata.prep_time %}
-                {% when Some with (prep_time) %}
-                <div class="flex flex-col items-center justify-center bg-white border border-blue-200 rounded-xl px-4 py-3 shadow-sm">
-                    <span class="text-2xl mb-1">⏱️</span>
-                    <span class="text-lg font-bold text-gray-800">{{ prep_time }}</span>
-                    <span class="text-xs text-gray-500 uppercase tracking-wide">{{ tr.t("meta-prep-time") }}</span>
-                </div>
-                {% when None %}
-                {% endmatch %}
-
-                {% match metadata.cook_time %}
-                {% when Some with (cook_time) %}
-                <div class="flex flex-col items-center justify-center bg-white border border-red-200 rounded-xl px-4 py-3 shadow-sm">
-                    <span class="text-2xl mb-1">🔥</span>
-                    <span class="text-lg font-bold text-gray-800">{{ cook_time }}</span>
-                    <span class="text-xs text-gray-500 uppercase tracking-wide">{{ tr.t("meta-cook-time") }}</span>
-                </div>
-                {% when None %}
-                {% endmatch %}
-
-                {% match metadata.total_time %}
-                {% when Some with (total_time) %}
-                <div class="flex flex-col items-center justify-center bg-white border border-purple-200 rounded-xl px-4 py-3 shadow-sm">
-                    <span class="text-2xl mb-1">⏰</span>
-                    <span class="text-lg font-bold text-gray-800">{{ total_time }}</span>
-                    <span class="text-xs text-gray-500 uppercase tracking-wide">{{ tr.t("meta-total-time") }}</span>
-                </div>
-                {% when None %}
-                {% endmatch %}
-
-            </div>
-            {% endif %}
-
-            <!-- Secondary metadata pills -->
-            <div id="metadata-container" class="flex flex-wrap gap-3">
 
                 {% match metadata.time %}
                 {% when Some with (time) %}
@@ -161,31 +120,43 @@
 
                 {% match metadata.difficulty %}
                 {% when Some with (difficulty) %}
-                <span class="metadata-pill metadata-difficulty">📊 {{ tr.t("meta-difficulty") }}: {{ difficulty }}</span>
+                <span class="metadata-pill metadata-difficulty">📊 {{ difficulty }}</span>
                 {% when None %}
                 {% endmatch %}
 
                 {% match metadata.course %}
                 {% when Some with (course) %}
-                <span class="metadata-pill metadata-course">🍽️ {{ tr.t("meta-course") }}: {{ course }}</span>
+                <span class="metadata-pill metadata-course">🍽️ {{ course }}</span>
+                {% when None %}
+                {% endmatch %}
+
+                {% match metadata.prep_time %}
+                {% when Some with (prep_time) %}
+                <span class="metadata-pill metadata-prep">⏱️ {{ tr.t("meta-prep-time") }}: {{ prep_time }}</span>
+                {% when None %}
+                {% endmatch %}
+
+                {% match metadata.cook_time %}
+                {% when Some with (cook_time) %}
+                <span class="metadata-pill metadata-cook">🔥 {{ tr.t("meta-cook-time") }}: {{ cook_time }}</span>
                 {% when None %}
                 {% endmatch %}
 
                 {% match metadata.cuisine %}
                 {% when Some with (cuisine) %}
-                <span class="metadata-pill metadata-cuisine">🌍 {{ tr.t("meta-cuisine") }}: {{ cuisine }}</span>
+                <span class="metadata-pill metadata-cuisine">🌍 {{ cuisine }}</span>
                 {% when None %}
                 {% endmatch %}
 
                 {% match metadata.diet %}
                 {% when Some with (diet) %}
-                <span class="metadata-pill metadata-diet">🥗 {{ tr.t("meta-diet") }}: {{ diet }}</span>
+                <span class="metadata-pill metadata-diet">🥗 {{ diet }}</span>
                 {% when None %}
                 {% endmatch %}
 
                 {% match metadata.author %}
                 {% when Some with (author) %}
-                <span class="metadata-pill metadata-author">👤 {{ tr.t("meta-author") }}: {{ author }}</span>
+                <span class="metadata-pill metadata-author">👤 {{ author }}</span>
                 {% when None %}
                 {% endmatch %}
 

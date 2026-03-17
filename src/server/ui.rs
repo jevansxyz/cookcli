@@ -742,10 +742,6 @@ async fn recipe_page(
                 .or_else(|| get_field("cook_time"))
                 .or_else(|| get_field("cooktime"))
                 .or_else(|| get_field("time.cook")),
-            total_time: get_field("total time")
-                .or_else(|| get_field("total_time"))
-                .or_else(|| get_field("totaltime"))
-                .or_else(|| get_field("time.total")),
             cuisine: get_field("cuisine"),
             diet: get_field("diet"),
             author: get_field("author").or_else(|| get_field("source.author")),
@@ -1395,10 +1391,6 @@ async fn menu_page_handler(
             cook_time: get_field("cook time")
                 .or_else(|| get_field("cook_time"))
                 .or_else(|| get_field("cooktime")),
-            total_time: get_field("total time")
-                .or_else(|| get_field("total_time"))
-                .or_else(|| get_field("totaltime"))
-                .or_else(|| get_field("time.total")),
             cuisine: get_field("cuisine"),
             diet: get_field("diet"),
             author: get_field("author").or_else(|| get_field("source.author")),
