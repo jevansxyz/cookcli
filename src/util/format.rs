@@ -75,35 +75,20 @@ fn decimal_to_fraction(value: f64) -> Option<String> {
     None
 }
 
-/// Parses a servings value and scales the leading number.
-/// The leading number is used for scaling; anything else is ignored for scaling but shown as units.
+/// Parses the leading number from a servings string.
+/// The leading number is used for scaling quantities when adding to the shopping list.
+/// Anything else is ignored for scaling but shown as units in the display.
 /// Examples:
-///   "4 people" scaled by 2.0 -> "8 people"
-///   "4" scaled by 2.0 -> "8"
-///   "4.5 servings" scaled by 0.5 -> "2.25 servings"
-pub fn scale_servings(raw: &str, scale: f64) -> String {
+///   "4 people" -> Some(4.0)
+///   "4" -> Some(4.0)
+///   "4.5 servings" -> Some(4.5)
+///   "serves 4" -> None (no leading number)
+pub fn parse_servings_base(raw: &str) -> Option<f64> {
     let trimmed = raw.trim();
-
-    // Find the end of the leading number (digits and decimal point)
     let num_end = trimmed
         .find(|c: char| !c.is_ascii_digit() && c != '.')
         .unwrap_or(trimmed.len());
-
-    let (num_str, rest) = trimmed.split_at(num_end);
-
-    if let Ok(n) = num_str.parse::<f64>() {
-        let scaled = n * scale;
-        let formatted = format_number(scaled);
-        let rest_trimmed = rest.trim();
-        if rest_trimmed.is_empty() {
-            formatted
-        } else {
-            format!("{formatted} {rest_trimmed}")
-        }
-    } else {
-        // No leading number found; return as-is
-        raw.to_string()
-    }
+    trimmed[..num_end].parse::<f64>().ok()
 }
 
 /// Formats a quantity value for display

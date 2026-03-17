@@ -40,6 +40,19 @@
             {% endif %}
             <div class="flex flex-wrap items-center gap-2 lg:gap-3 print:hidden">
                 <div class="flex items-center">
+                    {% match servings_base %}
+                    {% when Some with (sb) %}
+                    <label for="scale" class="text-sm font-medium text-gray-700 mr-2">{{ tr.t("recipe-servings-label") }}:</label>
+                    <input type="number"
+                           id="scale"
+                           data-servings-base="{{ sb }}"
+                           value="{{ scale * sb }}"
+                           min="0.5"
+                           max="200"
+                           step="0.5"
+                           class="px-3 py-2 border border-gray-300 rounded-lg w-20 text-center"
+                           onchange="window.location.href = `/recipe/{{ recipe_path }}?scale=${this.value / {{ sb }}}`">
+                    {% when None %}
                     <label for="scale" class="text-sm font-medium text-gray-700 mr-2">{{ tr.t("recipe-scale-label") }}:</label>
                     <input type="number"
                            id="scale"
@@ -49,6 +62,7 @@
                            step="0.5"
                            class="px-3 py-2 border border-gray-300 rounded-lg w-20 text-center"
                            onchange="window.location.href = `/recipe/{{ recipe_path }}?scale=${this.value}`">
+                    {% endmatch %}
                 </div>
                 <a href="/edit/{{ recipe_path }}"
                    class="px-3 lg:px-4 py-2 text-sm lg:text-base bg-gradient-to-r from-blue-500 to-cyan-500 text-white rounded-lg hover:from-blue-600 hover:to-cyan-600 transition-all shadow-md flex items-center gap-1.5 lg:gap-2 whitespace-nowrap"
@@ -341,7 +355,13 @@
 
 <script>
 async function addToShoppingList(event, recipePath) {
-    const scale = document.getElementById('scale').value;
+    const scaleInput = document.getElementById('scale');
+    const servingsBase = scaleInput.dataset.servingsBase
+        ? parseFloat(scaleInput.dataset.servingsBase)
+        : null;
+    const scale = servingsBase
+        ? parseFloat(scaleInput.value) / servingsBase
+        : parseFloat(scaleInput.value);
     // Hide any previous error
     const existingError = document.getElementById('recipe-error-banner');
     if (existingError) existingError.remove();
@@ -355,7 +375,7 @@ async function addToShoppingList(event, recipePath) {
             body: JSON.stringify({
                 path: recipePath,
                 name: '{{ recipe.name }}',
-                scale: parseFloat(scale)
+                scale: scale
             })
         });
 

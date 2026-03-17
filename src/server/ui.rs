@@ -730,7 +730,7 @@ async fn recipe_page(
         }
 
         Some(RecipeMetadata {
-            servings: get_field("servings").map(|s| crate::util::format::scale_servings(&s, scale)),
+            servings: get_field("servings"),
             time: get_field("time"),
             difficulty: get_field("difficulty"),
             course: get_field("course"),
@@ -765,6 +765,23 @@ async fn recipe_page(
                 .replace(".cook", "")
         });
 
+    // Extract the leading number from the servings metadata value (e.g. "4 people" -> 4.0).
+    // This is used in the template to convert the scale multiplier to/from a servings count.
+    let servings_base = recipe
+        .metadata
+        .get("servings")
+        .and_then(|v| {
+            if let Some(n) = v.as_i64() {
+                Some(n as f64)
+            } else if let Some(n) = v.as_f64() {
+                Some(n)
+            } else {
+                v.as_str()
+                    .and_then(crate::util::format::parse_servings_base)
+            }
+        })
+        .filter(|n| *n > 0.0);
+
     let template = RecipeTemplate {
         active: "recipes".to_string(),
         recipe: RecipeData {
@@ -774,6 +791,7 @@ async fn recipe_page(
         recipe_path: path,
         breadcrumbs,
         scale,
+        servings_base,
         tags,
         ingredients,
         cookware,
@@ -1374,7 +1392,7 @@ async fn menu_page_handler(
         }
 
         Some(RecipeMetadata {
-            servings: get_field("servings").map(|s| crate::util::format::scale_servings(&s, scale)),
+            servings: get_field("servings"),
             time: get_field("time"),
             difficulty: get_field("difficulty"),
             course: get_field("course"),

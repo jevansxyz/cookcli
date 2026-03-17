@@ -69,6 +69,10 @@ pub struct RecipeTemplate {
     pub recipe_path: String,
     pub breadcrumbs: Vec<String>,
     pub scale: f64,
+    /// Leading number parsed from the `servings` metadata value.
+    /// When present, the scale input on the recipe page displays servings count
+    /// (= scale × servings_base) and converting back uses servings_count / servings_base.
+    pub servings_base: Option<f64>,
     pub tags: Vec<String>,
     pub ingredients: Vec<IngredientData>,
     pub cookware: Vec<CookwareData>,
