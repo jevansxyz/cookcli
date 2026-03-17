@@ -56,8 +56,13 @@ struct ClaudeContent {
 /// Build canonical YAML frontmatter from recipe components.
 ///
 /// Canonical field order follows https://cooklang.org/docs/conventions/:
-/// title, source, servings, prep time, cook time, author, description,
-/// course, cuisine, tags, diet, image.
+/// title, source, servings, prep time, cook time, author, locale,
+/// course, cuisine, tags, diet, image, introduction.
+///
+/// - `tags` and `diet` are always written as YAML arrays.
+/// - `image` is written as a scalar when there is one URL, or as a YAML array
+///   when multiple URLs are present (comma-separated in the source).
+/// - `introduction` is placed last.
 ///
 /// `metadata_str` is the raw YAML string (without `---` delimiters) returned
 /// by `url_to_recipe`.
@@ -70,27 +75,77 @@ pub fn build_canonical_frontmatter(title: &str, url: &str, metadata_str: &str) -
         }
     }
 
-    const CANONICAL: &[&str] = &[
+    // Helper: split a comma-separated value into trimmed, non-empty items.
+    let split_list = |s: &str| -> Vec<String> {
+        s.split(',')
+            .map(|item| item.trim().to_string())
+            .filter(|item| !item.is_empty())
+            .collect()
+    };
+
+    // Helper: format a list as a YAML block sequence.
+    let yaml_array = |items: &[String]| -> String {
+        items
+            .iter()
+            .map(|item| format!("  - {}\n", item))
+            .collect()
+    };
+
+    // Scalar fields written in order (title and source are handled separately below).
+    const SCALAR_FIELDS: &[&str] = &[
         "servings",
         "prep time",
         "cook time",
         "author",
-        "description",
+        "locale",
         "course",
         "cuisine",
-        "tags",
-        "diet",
-        "image",
     ];
 
     let mut fm = String::from("---\n");
     fm.push_str(&format!("title: {}\n", title));
     fm.push_str(&format!("source: {}\n", url));
-    for &key in CANONICAL {
+
+    for &key in SCALAR_FIELDS {
         if let Some(value) = meta.get(key) {
             fm.push_str(&format!("{}: {}\n", key, value));
         }
     }
+
+    // tags — always a YAML array
+    if let Some(value) = meta.get("tags") {
+        let items = split_list(value);
+        if !items.is_empty() {
+            fm.push_str("tags:\n");
+            fm.push_str(&yaml_array(&items));
+        }
+    }
+
+    // diet — always a YAML array
+    if let Some(value) = meta.get("diet") {
+        let items = split_list(value);
+        if !items.is_empty() {
+            fm.push_str("diet:\n");
+            fm.push_str(&yaml_array(&items));
+        }
+    }
+
+    // image — scalar if one URL, YAML array if multiple
+    if let Some(value) = meta.get("image") {
+        let items = split_list(value);
+        if items.len() == 1 {
+            fm.push_str(&format!("image: {}\n", items[0]));
+        } else if items.len() > 1 {
+            fm.push_str("image:\n");
+            fm.push_str(&yaml_array(&items));
+        }
+    }
+
+    // introduction — always last
+    if let Some(value) = meta.get("introduction") {
+        fm.push_str(&format!("introduction: {}\n", value));
+    }
+
     fm.push_str("---\n\n");
     fm
 }
