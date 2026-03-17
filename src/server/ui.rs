@@ -1007,7 +1007,7 @@ async fn create_recipe(
     let clean_dir: String = form
         .directory
         .chars()
-        .filter(|c| c.is_alphanumeric() || *c == ' ' || *c == '-' || *c == '_' || *c == '/')
+        .filter(|c| c.is_alphanumeric() || *c == ' ' || *c == '-' || *c == '_' || *c == '/' || *c == '&')
         .collect();
     let clean_dir = clean_dir
         .trim_matches('/')
