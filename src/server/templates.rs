@@ -55,6 +55,7 @@ pub struct TodaysMenu {
 pub struct RecipesTemplate {
     pub active: String,
     pub current_name: String,
+    pub current_path: Option<String>,
     pub breadcrumbs: Vec<Breadcrumb>,
     pub items: Vec<RecipeItem>,
     pub todays_menu: Option<TodaysMenu>,
@@ -217,7 +218,9 @@ pub struct NewTemplate {
     pub active: String,
     pub tr: Tr,
     pub error: Option<String>,
-    pub filename: Option<String>,
+    pub directory: Option<String>,
+    pub directories: Vec<String>,
+    pub name: Option<String>,
     pub url: Option<String>,
 }
 

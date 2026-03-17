@@ -204,6 +204,7 @@ async fn recipes_handler(
     let template = RecipesTemplate {
         active: "recipes".to_string(),
         current_name,
+        current_path: path,
         breadcrumbs,
         items,
         todays_menu,
@@ -873,37 +874,63 @@ async fn edit_page(
 #[derive(Deserialize, Default)]
 struct NewPageQuery {
     error: Option<String>,
-    filename: Option<String>,
+    dir: Option<String>,
+    name: Option<String>,
     url: Option<String>,
 }
 
 async fn new_page(
+    State(state): State<Arc<AppState>>,
     Extension(lang): Extension<LanguageIdentifier>,
     Query(query): Query<NewPageQuery>,
 ) -> impl askama_axum::IntoResponse {
+    // Collect top-level subdirectories from base_path for the dropdown
+    let directories = {
+        let mut dirs = vec![];
+        if let Ok(mut read_dir) = tokio::fs::read_dir(&state.base_path).await {
+            while let Ok(Some(entry)) = read_dir.next_entry().await {
+                if let Ok(ft) = entry.file_type().await {
+                    if ft.is_dir() {
+                        if let Some(name) = entry.file_name().to_str() {
+                            if !name.starts_with('.') {
+                                dirs.push(name.to_string());
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        dirs.sort();
+        dirs
+    };
+
     crate::server::templates::NewTemplate {
         active: "recipes".to_string(),
         tr: Tr::new(lang),
         error: query.error,
-        filename: query.filename,
+        directory: query.dir,
+        directories,
+        name: query.name,
         url: query.url,
     }
 }
 
 #[derive(Deserialize)]
 struct NewRecipeForm {
-    filename: String,
+    directory: String,
+    name: String,
     url: Option<String>,
 }
 
 /// Helper to build redirect URL with error message
-fn new_page_error(error: &str, filename: &str, url: &str) -> axum::response::Response {
+fn new_page_error(error: &str, directory: &str, name: &str, url: &str) -> axum::response::Response {
     let encoded_error = urlencoding::encode(error);
-    let encoded_filename = urlencoding::encode(filename);
+    let encoded_dir = urlencoding::encode(directory);
+    let encoded_name = urlencoding::encode(name);
     let encoded_url = urlencoding::encode(url);
     axum::response::Redirect::to(&format!(
-        "/new?error={}&filename={}&url={}",
-        encoded_error, encoded_filename, encoded_url
+        "/new?error={}&dir={}&name={}&url={}",
+        encoded_error, encoded_dir, encoded_name, encoded_url
     ))
     .into_response()
 }
@@ -962,40 +989,56 @@ async fn create_recipe(
         return (StatusCode::FORBIDDEN, "Invalid request origin").into_response();
     }
 
-    let original_filename = form.filename.clone();
+    let original_dir = form.directory.clone();
+    let original_name = form.name.clone();
     let original_url = form.url.as_deref().unwrap_or("").to_string();
 
-    // Validate input before sanitization
-    if form.filename.trim().is_empty() {
+    // Validate recipe name
+    if form.name.trim().is_empty() {
         return new_page_error(
             "Recipe name cannot be empty",
-            &original_filename,
+            &original_dir,
+            &original_name,
             &original_url,
         );
     }
 
-    // Sanitize path - allow alphanumeric, space, dash, underscore, and forward slash
-    let recipe_path: String = form
-        .filename
+    // Sanitize directory: allow alphanumeric, space, dash, underscore, slash
+    let clean_dir: String = form
+        .directory
         .chars()
         .filter(|c| c.is_alphanumeric() || *c == ' ' || *c == '-' || *c == '_' || *c == '/')
         .collect();
-
-    // Clean up path: remove leading/trailing slashes, collapse multiple slashes
-    let recipe_path = recipe_path
+    let clean_dir = clean_dir
         .trim_matches('/')
         .split('/')
         .filter(|s| !s.is_empty())
         .collect::<Vec<_>>()
         .join("/");
 
-    if recipe_path.is_empty() {
+    // Sanitize name: allow alphanumeric, space, dash, underscore
+    let clean_name: String = form
+        .name
+        .chars()
+        .filter(|c| c.is_alphanumeric() || *c == ' ' || *c == '-' || *c == '_')
+        .collect();
+    let clean_name = clean_name.trim().to_string();
+
+    if clean_name.is_empty() {
         return new_page_error(
             "Recipe name cannot be empty",
-            &original_filename,
+            &original_dir,
+            &original_name,
             &original_url,
         );
     }
+
+    // Combine into recipe path
+    let recipe_path = if clean_dir.is_empty() {
+        clean_name.clone()
+    } else {
+        format!("{}/{}", clean_dir, clean_name)
+    };
 
     let file_path = state.base_path.join(format!("{}.cook", recipe_path));
 
@@ -1008,18 +1051,18 @@ async fn create_recipe(
             _ => {
                 return new_page_error(
                     "Internal error: invalid base path",
-                    &original_filename,
+                    &original_dir,
+                    &original_name,
                     &original_url,
                 );
             }
         };
 
     // Validate parent path components don't escape base_path
-    // We do this by checking the joined path doesn't contain .. after normalization
     let normalized_path = file_path.as_str().replace("\\", "/");
     if normalized_path.contains("/../") || normalized_path.ends_with("/..") {
         tracing::warn!("Path traversal attempt detected in: {}", recipe_path);
-        return new_page_error("Invalid recipe path", &original_filename, &original_url);
+        return new_page_error("Invalid recipe path", &original_dir, &original_name, &original_url);
     }
 
     // For the file path, we check the parent directory
@@ -1030,7 +1073,8 @@ async fn create_recipe(
                 tracing::error!("Failed to create directories: {}", e);
                 return new_page_error(
                     "Failed to create directory",
-                    &original_filename,
+                    &original_dir,
+                    &original_name,
                     &original_url,
                 );
             }
@@ -1046,27 +1090,23 @@ async fn create_recipe(
                         parent_canonical,
                         base_canonical
                     );
-                    // Clean up the created directory if it's outside base_path
                     let _ = tokio::fs::remove_dir_all(parent).await;
                     return new_page_error(
                         "Invalid recipe path",
-                        &original_filename,
+                        &original_dir,
+                        &original_name,
                         &original_url,
                     );
                 }
             }
             _ => {
-                return new_page_error("Invalid recipe path", &original_filename, &original_url);
+                return new_page_error("Invalid recipe path", &original_dir, &original_name, &original_url);
             }
         }
     }
 
-    // Get the recipe name (last component of path) for the title
-    let recipe_name = recipe_path
-        .split('/')
-        .next_back()
-        .unwrap_or(&recipe_path)
-        .replace(['-', '_'], " ");
+    // Use the recipe name for the title
+    let recipe_name = clean_name.replace(['-', '_'], " ");
 
     // Build recipe content: import from URL via Claude, or create blank template
     let import_url = form
@@ -1089,12 +1129,13 @@ async fn create_recipe(
         match result {
             Ok(Ok(c)) => c,
             Ok(Err(e)) => {
-                return new_page_error(&e.to_string(), &original_filename, &original_url);
+                return new_page_error(&e.to_string(), &original_dir, &original_name, &original_url);
             }
             Err(e) => {
                 return new_page_error(
                     &format!("Import task failed: {}", e),
-                    &original_filename,
+                    &original_dir,
+                    &original_name,
                     &original_url,
                 );
             }
@@ -1118,7 +1159,8 @@ async fn create_recipe(
                 tracing::error!("Failed to write recipe: {}", e);
                 return new_page_error(
                     "Failed to write recipe file",
-                    &original_filename,
+                    &original_dir,
+                    &original_name,
                     &original_url,
                 );
             }
@@ -1126,7 +1168,8 @@ async fn create_recipe(
         Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => {
             return new_page_error(
                 "A recipe with this name already exists",
-                &original_filename,
+                &original_dir,
+                &original_name,
                 &original_url,
             );
         }
@@ -1134,7 +1177,8 @@ async fn create_recipe(
             tracing::error!("Failed to create recipe file: {}", e);
             return new_page_error(
                 "Failed to create recipe file",
-                &original_filename,
+                &original_dir,
+                &original_name,
                 &original_url,
             );
         }
