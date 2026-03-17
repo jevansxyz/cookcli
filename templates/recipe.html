@@ -46,12 +46,12 @@
                     <input type="number"
                            id="scale"
                            data-servings-base="{{ sb }}"
-                           value="{{ scale * sb }}"
-                           min="0.5"
+                           value="{{ (scale * sb).round() }}"
+                           min="1"
                            max="200"
-                           step="0.5"
+                           step="1"
                            class="px-3 py-2 border border-gray-300 rounded-lg w-20 text-center"
-                           onchange="window.location.href = `/recipe/{{ recipe_path }}?scale=${this.value / {{ sb }}}`">
+                           onchange="window.location.href = `/recipe/{{ recipe_path }}?scale=${Math.round(this.value) / {{ sb }}}`">
                     {% when None %}
                     <label for="scale" class="text-sm font-medium text-gray-700 mr-2">{{ tr.t("recipe-scale-label") }}:</label>
                     <input type="number"
