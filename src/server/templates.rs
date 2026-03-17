@@ -264,6 +264,7 @@ pub struct RecipeMetadata {
     pub course: Option<String>,
     pub prep_time: Option<String>,
     pub cook_time: Option<String>,
+    pub total_time: Option<String>,
     pub cuisine: Option<String>,
     pub diet: Option<String>,
     pub author: Option<String>,
