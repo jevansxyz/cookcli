@@ -767,18 +767,20 @@ async fn recipe_page(
 
     // Extract the leading number from the servings metadata value (e.g. "4 people" -> 4.0).
     // This is used in the template to convert the scale multiplier to/from a servings count.
-    let servings_base = recipe
-        .metadata
-        .get("servings")
-        .and_then(|v| {
-            if let Some(n) = v.as_i64() {
-                Some(n as f64)
-            } else if let Some(n) = v.as_f64() {
-                Some(n)
-            } else {
-                v.as_str()
-                    .and_then(crate::util::format::parse_servings_base)
-            }
+    // Must use an unscaled parse so that e.g. scale=0 doesn't zero-out the servings metadata.
+    let servings_base = crate::util::parse_recipe_from_entry(&entry, 1.0)
+        .ok()
+        .and_then(|base_recipe| {
+            base_recipe.metadata.get("servings").and_then(|v| {
+                if let Some(n) = v.as_i64() {
+                    Some(n as f64)
+                } else if let Some(n) = v.as_f64() {
+                    Some(n)
+                } else {
+                    v.as_str()
+                        .and_then(crate::util::format::parse_servings_base)
+                }
+            })
         })
         .filter(|n| *n > 0.0);
 
