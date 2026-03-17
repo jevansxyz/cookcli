@@ -104,6 +104,11 @@ pub async fn call_claude(api_key: &str, recipe_name: &str, recipe_text: &str) ->
          - Convert any imperial measurements to metric equivalents\n\
          - Use Cooklang syntax: @ingredient{{amount%unit}} for ingredients, \
            #cookware{{}} for cookware, ~timer{{time%unit}} for timers\n\
+         - When an ingredient has a preparation note (e.g. chopped, sliced, julienned, diced), \
+           include it in parentheses immediately after the ingredient: @ingredient{{amount%unit}}(preparation)\n\
+         - Examples: '1 brown onion, chopped' becomes @brown onion{{1}}(chopped), \
+           '1/2 cucumber, julienned' becomes @cucumber{{1/2}}(julienned), \
+           '200g chicken breast, diced' becomes @chicken breast{{200%g}}(diced)\n\
          - Do NOT include a title line at the top (the filename is the title)\n\
          - Output ONLY the Cooklang content with no explanation, preamble, or markdown code blocks\n\
          - Start directly with the recipe steps\n\n\
