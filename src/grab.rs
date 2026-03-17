@@ -71,7 +71,8 @@ pub fn build_canonical_frontmatter(title: &str, url: &str, metadata_str: &str) -
     let mut meta: std::collections::HashMap<String, String> = std::collections::HashMap::new();
     for line in metadata_str.lines() {
         if let Some((key, value)) = line.split_once(": ") {
-            meta.entry(key.to_string()).or_insert_with(|| value.to_string());
+            meta.entry(key.to_string())
+                .or_insert_with(|| value.to_string());
         }
     }
 
@@ -85,10 +86,7 @@ pub fn build_canonical_frontmatter(title: &str, url: &str, metadata_str: &str) -
 
     // Helper: format a list as a YAML block sequence.
     let yaml_array = |items: &[String]| -> String {
-        items
-            .iter()
-            .map(|item| format!("  - {}\n", item))
-            .collect()
+        items.iter().map(|item| format!("  - {}\n", item)).collect()
     };
 
     // Scalar fields written in order (title and source are handled separately below).

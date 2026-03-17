@@ -730,7 +730,7 @@ async fn recipe_page(
         }
 
         Some(RecipeMetadata {
-            servings: get_field("servings"),
+            servings: get_field("servings").map(|s| crate::util::format::scale_servings(&s, scale)),
             time: get_field("time"),
             difficulty: get_field("difficulty"),
             course: get_field("course"),
@@ -1374,7 +1374,7 @@ async fn menu_page_handler(
         }
 
         Some(RecipeMetadata {
-            servings: get_field("servings"),
+            servings: get_field("servings").map(|s| crate::util::format::scale_servings(&s, scale)),
             time: get_field("time"),
             difficulty: get_field("difficulty"),
             course: get_field("course"),

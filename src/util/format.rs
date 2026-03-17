@@ -75,6 +75,37 @@ fn decimal_to_fraction(value: f64) -> Option<String> {
     None
 }
 
+/// Parses a servings value and scales the leading number.
+/// The leading number is used for scaling; anything else is ignored for scaling but shown as units.
+/// Examples:
+///   "4 people" scaled by 2.0 -> "8 people"
+///   "4" scaled by 2.0 -> "8"
+///   "4.5 servings" scaled by 0.5 -> "2.25 servings"
+pub fn scale_servings(raw: &str, scale: f64) -> String {
+    let trimmed = raw.trim();
+
+    // Find the end of the leading number (digits and decimal point)
+    let num_end = trimmed
+        .find(|c: char| !c.is_ascii_digit() && c != '.')
+        .unwrap_or(trimmed.len());
+
+    let (num_str, rest) = trimmed.split_at(num_end);
+
+    if let Ok(n) = num_str.parse::<f64>() {
+        let scaled = n * scale;
+        let formatted = format_number(scaled);
+        let rest_trimmed = rest.trim();
+        if rest_trimmed.is_empty() {
+            formatted
+        } else {
+            format!("{formatted} {rest_trimmed}")
+        }
+    } else {
+        // No leading number found; return as-is
+        raw.to_string()
+    }
+}
+
 /// Formats a quantity value for display
 pub fn format_quantity(value: &cooklang::Value) -> Option<String> {
     match value {
