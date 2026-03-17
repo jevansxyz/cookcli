@@ -353,23 +353,49 @@
     if (!scaleInput) return;
 
     var navTimer = null;
+    var navigating = false;
 
+    function navigateToScale() {
+        if (navigating) return;
+        var servingsBase = scaleInput.dataset.servingsBase
+            ? parseFloat(scaleInput.dataset.servingsBase)
+            : null;
+        var scale;
+        if (servingsBase) {
+            scale = Math.round(parseFloat(scaleInput.value)) / servingsBase;
+        } else {
+            scale = parseFloat(scaleInput.value);
+        }
+        if (!isNaN(scale) && scale > 0) {
+            navigating = true;
+            window.location.href = '/recipe/{{ recipe_path }}?scale=' + scale;
+        }
+    }
+
+    // Intercept arrow keys to prevent the native change event from firing,
+    // which would otherwise trigger a second navigation on blur during page unload.
+    scaleInput.addEventListener('keydown', function(e) {
+        if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
+        e.preventDefault();
+
+        var step = parseFloat(scaleInput.step) || 1;
+        var delta = e.key === 'ArrowUp' ? step : -step;
+        var newValue = parseFloat(scaleInput.value) + delta;
+        var min = parseFloat(scaleInput.min);
+        var max = parseFloat(scaleInput.max);
+        if (!isNaN(min)) newValue = Math.max(min, newValue);
+        if (!isNaN(max)) newValue = Math.min(max, newValue);
+        newValue = Math.round(newValue * 100) / 100;
+        scaleInput.value = newValue;
+
+        clearTimeout(navTimer);
+        navTimer = setTimeout(navigateToScale, 50);
+    });
+
+    // Handle spinner button clicks, typing + blur, and keyboard shortcut adjustScale().
     scaleInput.addEventListener('change', function() {
         clearTimeout(navTimer);
-        navTimer = setTimeout(function() {
-            var servingsBase = scaleInput.dataset.servingsBase
-                ? parseFloat(scaleInput.dataset.servingsBase)
-                : null;
-            var scale;
-            if (servingsBase) {
-                scale = Math.round(parseFloat(scaleInput.value)) / servingsBase;
-            } else {
-                scale = parseFloat(scaleInput.value);
-            }
-            if (!isNaN(scale) && scale > 0) {
-                window.location.href = '/recipe/{{ recipe_path }}?scale=' + scale;
-            }
-        }, 50);
+        navTimer = setTimeout(navigateToScale, 50);
     });
 })();
 </script>
